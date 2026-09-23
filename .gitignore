@@ -33,6 +33,9 @@
 *.bmp
 *.svg
 
+# But keep paper figures
+!ieee_template/images/*.png
+
 # Office files
 *.pptx
 *.docx
