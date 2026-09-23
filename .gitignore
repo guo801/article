@@ -1,0 +1,61 @@
+# LaTeX build artifacts
+*.aux
+*.log
+*.out
+*.synctex.gz
+*.toc
+*.lof
+*.lot
+*.bbl
+*.blg
+*.fls
+*.fdb_latexmk
+*.nav
+*.snm
+*.vrb
+*.dvi
+*.ps
+*.eps
+*.idx
+*.ilg
+*.ind
+*.bcf
+*.run.xml
+
+# Generated PDFs
+*.pdf
+
+# Images (too large for git)
+*.png
+*.jpg
+*.jpeg
+*.gif
+*.bmp
+*.svg
+
+# Office files
+*.pptx
+*.docx
+*.xlsx
+
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# IDE / Editor
+*.swp
+*.swo
+*~
+
+# Temporary / backup directories
+tmp/
+revision_backup_*/
+abridged_revision_archive_*/
+
+# Microsoft directory (OS artifacts)
+Microsoft/

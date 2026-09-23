@@ -1,0 +1,32 @@
+# LaTeX 临时文件
+*.aux
+*.bbl
+*.blg
+*.fdb_latexmk
+*.fls
+*.log
+*.out
+*.synctex.gz
+*.toc
+*.lof
+*.lot
+*.nav
+*.snm
+*.vrb
+*.bcf
+*.run.xml
+*-blx.bib
+
+# 编辑器临时文件
+*.swp
+*.swo
+*~
+.vscode/
+.idea/
+
+# 操作系统文件
+.DS_Store
+Thumbs.db
+
+# PDF输出（可选，如果不想版本控制PDF文件）
+*.pdf

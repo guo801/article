@@ -1,0 +1,14 @@
+\section{Conclusion and Future Work}
+\label{sec:conclusion}
+
+\subsection{Conclusion}
+\label{subsec:conclusion_summary}
+In this paper, we presented a digital twin-driven hybrid robotic framework tailored for the end-to-end automation of complex bio-chemical laboratory workflows, specifically covering solution preparation, water contact angle measurement, and serial dilution for biological culturing. By decoupling the control architecture, our system guarantees absolute fluid stability during macroscopic mobile base navigation via constraint-aware classical motion planning. For dexterous, contact-rich robotic arm operations, we implemented a hybrid learning strategy: a posture-aware massively parallel Deep Reinforcement Learning (DRL) agent in Isaac Sim for upright labware grasping, and a teleoperation-guided Imitation Learning (IL) policy with regularized few-shot real-world fine-tuning for precision micro-pipetting and droplet dispensing. Extensive empirical evaluations demonstrate that our framework achieves an 82.7\% pooled success rate across the reported manipulation-skill trials, effectively eliminating the prohibitive costs and risks of physical trial-and-error in autonomous laboratories.
+
+\subsection{Limitations and Future Work}
+\label{subsec:limitations_future}
+Despite the promising results, certain limitations remain. Currently, demonstration acquisition for imitation learning relies on manual teleoperation, which can become a bottleneck when scaling up to hundreds of diverse assay protocols. Furthermore, the vision-based policy is primarily optimized for rigid glass vials and microplates, requiring further adaptation for highly deformable labware or soft tissues.
+
+The present experiments also evaluate an offline-trained simulation-to-real pipeline, not the benefit of the proposed online twin loop. Before calling the system an online-calibrated digital twin, we must measure synchronization latency and pose error, held-out predictive accuracy after calibration, and the change in physical spill rate and workflow success under prediction-gated control. These tests are specified in Section~\ref{subsec:online_twin_eval}.
+
+In future work, we plan to integrate Vision-Language Models (VLMs) and Large Language Models (LLMs) into the digital twin framework. This will enable the system to semantically parse high-level natural language instructions (e.g., ``Prepare a 1:10 dilution series and measure the substrate contact angle'') and automatically generate Hierarchical State Machine (HSM) sequences and control primitives, moving closer toward fully autonomous scientific discovery.

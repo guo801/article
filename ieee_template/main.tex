@@ -1,0 +1,120 @@
+\documentclass[journal,twocolumn]{IEEEtran}
+
+% ==================== Packages ====================
+\usepackage{graphicx}
+\usepackage{xeCJK} % Support for Chinese characters (Use XeLaTeX compiler)
+\usepackage{float} % 用于更好的图片位置控制
+\usepackage{amsmath} % For \text in math mode
+\usepackage{amssymb} % For \mathbb
+\usepackage{booktabs} % 表格美化
+\usepackage{hyperref} % 超链接
+\usepackage{cite} % 引用优化
+
+\setmainfont{Times New Roman}
+\begin{document}
+
+\title{A Digital Twin-Driven Hybrid Robotic Framework for Automated Materials Synthesis}
+%数字孪生驱动的自动化材料合成混合机器人框架
+\author{cx guo}
+% Note: IEEE format typically handles dates differently or omits them, but we leave it for your draft
+\date{May 2026}
+
+\maketitle
+
+% ==================== 摘要 ====================
+\input{sections/abstract}
+
+% ==================== 各章节 ====================
+\input{sections/introduction}
+\input{sections/related_work}
+\input{sections/methodology}
+\input{sections/experiments}
+\input{sections/conclusion}
+
+% ==================== 参考文献 ====================
+\begin{thebibliography}{99}
+
+\bibitem{burger2020mobile}
+B. Burger \textit{et al.}, ``A mobile robotic chemist,'' \textit{Nature}, vol. 583, no. 7815, pp. 237--241, 2020.
+
+\bibitem{macleod2020self}
+B. P. MacLeod \textit{et al.}, ``Self-driving laboratory for accelerated discovery of thin-film materials,'' \textit{Science Advances}, vol. 6, no. 20, p. eaaz8867, 2020.
+
+\bibitem{dt_migration_mobile}
+Y. Wang and X. Zhao, ``A digital twin dynamic migration method for industrial mobile robots,'' \textit{Robotics and Computer-Integrated Manufacturing}, vol. 92, p. 102864, 2025.
+
+\bibitem{dt_port_inspection}
+H. Jiang, Z. Guo, and Z. Zhang, ``Digital Twin and Path Planning for Intelligent Port Inspection Robots,'' \textit{Journal of Marine Science and Engineering}, vol. 14, no. 2, p. 186, 2026.
+
+\bibitem{dt_unity_ros}
+D. Kawshan and Q. Peng, ``Digital Twin Framework for Robot Path Planning and Real-Time Execution Using Unity-ROS Integration: Systems Architecture and Experimental Validation,'' \textit{Machines}, vol. 14, no. 4, p. 387, 2026.
+
+\bibitem{makoviychuk2021isaac}
+V. Makoviychuk \textit{et al.}, ``Isaac Gym: High performance GPU-based physics simulation for robot learning,'' in \textit{NeurIPS Datasets and Benchmarks}, 2021.
+
+\bibitem{dt_collision_timeseries}
+F. El Kalach, M. A. Farahani, P. Samaha, \textit{et al.}, ``Digital twin enabled robot collision detection using time series forecasting,'' \textit{Journal of Intelligent Manufacturing}, pp. 1--18, 2026.
+
+\bibitem{dt_vr_collaboration}
+A. Cimino, F. Longo, L. Nicoletti, \textit{et al.}, ``Combining simulation and virtual reality for enabling interoperable digital twins in collaborative human--robot workspaces,'' \textit{International Journal of Production Research}, vol. 63, no. 23, pp. 9465--9501, 2025.
+
+\bibitem{dt_task_replanning}
+X. Li, B. He, Z. Wang, \textit{et al.}, ``A digital twin system for Task-Replanning and Human-Robot control of robot manipulation,'' \textit{Advanced Engineering Informatics}, vol. 62, p. 102570, 2024.
+
+\bibitem{mandlekar2021matters}
+A. Mandlekar \textit{et al.}, ``What matters in learning from offline human demonstrations for robot manipulation,'' in \textit{Conf. on Robot Learning (CoRL)}, pp. 1678--1690, 2021.
+
+\bibitem{johannink2019residual}
+T. Johannink \textit{et al.}, ``Residual reinforcement learning for robot control,'' in \textit{Proc. IEEE Int. Conf. Robot. Autom. (ICRA)}, pp. 6023--6029, 2019.
+
+\bibitem{andrychowicz2020learning}
+M. Andrychowicz \textit{et al.}, ``Learning dexterous in-hand manipulation,'' \textit{Int. J. Robot. Res.}, vol. 39, no. 1, pp. 3--20, 2020.
+
+\bibitem{brohan2023rt2}
+A. Brohan \textit{et al.}, ``RT-2: Vision-language-action models transfer web knowledge to robotic control,'' in \textit{Conf. Robot Learn. (CoRL)}, 2023.
+
+\bibitem{chi2023diffusion}
+C. Chi \textit{et al.}, ``Diffusion policy: Visuomotor policy learning via action diffusion,'' in \textit{Proc. Robot.: Sci. Syst. (RSS)}, 2023.
+
+\bibitem{gasparetto2015path}
+A. Gasparetto, P. Boscariol, A. Lanzutti, and R. Vidoni, ``Path planning and trajectory planning algorithms: A general overview,'' \textit{Motion and Operation Planning of Robotic Systems}, pp. 3--27, 2015.
+
+\bibitem{ho2016gail}
+J. Ho and S. Ermon, ``Generative adversarial imitation learning,'' in \textit{Adv. Neural Inf. Process. Syst. (NeurIPS)}, vol. 29, 2016.
+
+\bibitem{hofer2021sim2real}
+S. Hofer, K. Bekris, A. Handa, J. C. Gammell, M. Mozian, and M. White, ``Sim2real in robotics and automation: Applications and challenges,'' \textit{IEEE Trans. Autom. Sci. Eng.}, vol. 18, no. 2, pp. 398--400, 2021.
+
+\bibitem{hwangbo2019learning}
+J. Hwangbo \textit{et al.}, ``Learning agile and dynamic motor skills for legged robots,'' \textit{Sci. Robot.}, vol. 4, no. 26, p. eaau5872, 2019.
+
+\bibitem{levine2018learning}
+S. Levine, P. Pastor, A. Krizhevsky, J. Ibarz, and D. Quillen, ``Learning hand-eye coordination for robotic grasping with deep learning and large-scale data collection,'' \textit{Int. J. Robot. Res.}, vol. 37, no. 4--5, pp. 421--436, 2018.
+
+\bibitem{ng1999policy}
+A. Y. Ng, D. Harada, and S. Russell, ``Policy invariance under reward transformations: Theory and application to reward shaping,'' in \textit{Proc. Int. Conf. Mach. Learn. (ICML)}, 1999, pp. 278--287.
+
+\bibitem{osuga2018survey}
+T. Osa, J. Pajarinen, G. Neumann, J. A. Bagnell, P. Abbeel, and J. Peters, ``An algorithmic perspective on imitation learning,'' \textit{Found. Trends Robot.}, vol. 7, no. 1--2, pp. 1--179, 2018.
+
+\bibitem{pateria2021hierarchical}
+S. Pateria, B. Subagdja, A. Tan, and C. Quek, ``Hierarchical reinforcement learning: A comprehensive survey,'' \textit{ACM Comput. Surv.}, vol. 54, no. 5, pp. 1--35, 2021.
+
+\bibitem{rajcsy2018learning}
+A. Rajeswaran \textit{et al.}, ``Learning complex dexterous manipulation with deep reinforcement learning and demonstrations,'' in \textit{Proc. Robot.: Sci. Syst. (RSS)}, 2018.
+
+\bibitem{sadeghi2017cad}
+F. Sadeghi and S. Levine, ``CAD2RL: Real single-image flight without a single real image,'' in \textit{Proc. Robot.: Sci. Syst. (RSS)}, 2017.
+
+\bibitem{szymanski2022automated}
+N. J. Szymanski \textit{et al.}, ``An autonomous laboratory for the accelerated synthesis of novel materials,'' \textit{Nature}, vol. 624, pp. 86--91, 2023.
+
+\bibitem{tobin2017domain}
+J. Tobin, R. Fong, A. Ray, J. Schneider, W. Zaremba, and P. Abbeel, ``Domain randomization for transferring deep neural networks from simulation to the real world,'' in \textit{Proc. IEEE/RSJ Int. Conf. Intell. Robots Syst. (IROS)}, 2017, pp. 23--30.
+
+\bibitem{zhao2020sim2real}
+W. Zhao, J. P. Queralta, and T. Westerlund, ``Sim-to-real transfer in deep reinforcement learning for robotics: A survey,'' in \textit{Proc. IEEE Symp. Series Comput. Intell. (SSCI)}, 2020, pp. 737--744.
+
+\end{thebibliography}
+
+\end{document}
