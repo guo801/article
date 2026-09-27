@@ -12,14 +12,14 @@
 \usepackage{pifont} % 对勾/叉号符号
 
 % ==================== 中文字体设置 ====================
-\setCJKmainfont{SimSun} % 宋体
-\setCJKsansfont{SimHei} % 黑体
-\setCJKmonofont{FangSong} % 仿宋
+\IfFontExistsTF{SimSun}{\setCJKmainfont{SimSun}}{\setCJKmainfont{Noto Serif CJK SC}} % 宋体
+\IfFontExistsTF{SimHei}{\setCJKsansfont{SimHei}}{\setCJKsansfont{Noto Sans CJK SC}} % 黑体
+\IfFontExistsTF{FangSong}{\setCJKmonofont{FangSong}}{\setCJKmonofont{Noto Serif CJK SC}} % 仿宋
 
-\setmainfont{Times New Roman}
+\IfFontExistsTF{Times New Roman}{\setmainfont{Times New Roman}}{\setmainfont{TeX Gyre Termes}}
 \begin{document}
 
-\title{数字孪生驱动的自动化材料合成混合机器人框架}
+\title{面向自动化材料实验的混合机器人操作：液体运输、姿态感知抓取与精密移液}
 \author{cx guo}
 \date{2026年5月}
 

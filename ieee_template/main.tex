@@ -10,11 +10,11 @@
 \usepackage{hyperref} % 超链接
 \usepackage{cite} % 引用优化
 
-\setmainfont{Times New Roman}
+\IfFontExistsTF{Times New Roman}{\setmainfont{Times New Roman}}{\setmainfont{TeX Gyre Termes}}
 \begin{document}
 
-\title{A Digital Twin-Driven Hybrid Robotic Framework for Automated Materials Synthesis}
-%数字孪生驱动的自动化材料合成混合机器人框架
+\title{Hybrid Robotic Manipulation for Automated Materials Experiments: Liquid Transport, Posture-Aware Grasping, and Precision Pipetting}
+%面向自动化材料实验的混合机器人操作：液体运输、姿态感知抓取与精密移液
 \author{cx guo}
 % Note: IEEE format typically handles dates differently or omits them, but we leave it for your draft
 \date{May 2026}

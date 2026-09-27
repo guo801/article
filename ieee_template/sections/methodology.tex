@@ -4,50 +4,23 @@
 \begin{figure}[htbp]
     \centering
     \includegraphics[width=\linewidth]{images/Framework.png}
-    \caption{Digital twin-driven hybrid robotic end-to-end operation framework. The system employs a macro-micro decoupled strategy: macroscopic transit is controlled by a constraint-aware classical planner to ensure absolute spill-free safety, while microscopic contact-rich tasks are executed by neural network policies found within the rl file.}
+    \caption{Multi-platform hybrid robotic end-to-end operation framework. The system employs a macro-micro decoupled strategy: macroscopic transit is controlled by a constraint-aware classical planner to ensure absolute spill-free safety, while microscopic contact-rich tasks are executed by neural network policies found within the rl file.}
     \label{fig:overall_framework}
 \end{figure}
 
-This section details the proposed digital twin-driven hybrid robotic framework tailored for automated bio-chemical assays, including solution preparation, contact angle detection, and serial dilution. To handle heterogeneous task requirements, macroscopic inter-station transit is executed via constraint-aware classical planning, while dexterous robotic arm manipulations are governed by a hybrid learning architecture combining massively parallel Deep Reinforcement Learning (DRL) and human-in-the-loop Imitation Learning (IL).
+This section details the proposed multi-platform hybrid robotic framework tailored for automated bio-chemical assays, including solution preparation, contact angle detection, and serial dilution. To handle heterogeneous task requirements, macroscopic inter-station transit is executed via constraint-aware classical planning, while dexterous robotic arm manipulations are governed by a hybrid learning architecture combining massively parallel Deep Reinforcement Learning (DRL) and human-in-the-loop Imitation Learning (IL).
 
-\subsection{Physics-Driven Digital Twin Construction}
-\label{subsec:dt_construction}
+\subsection{Simulation Environment for Policy Training}
+\label{subsec:simulation_training}
 
-To enable risk-free training and pre-verification of contact-rich tasks, we construct a high-fidelity digital twin using NVIDIA Isaac Sim. Powered by a GPU-accelerated tensor physics engine, the digital twin accurately models rigid-body dynamics, joint torques, and frictional contacts. Signed Distance Field (SDF) collision meshes are assigned to gripper fingers and labware holders for penetration-free contact simulation. Crucially, the standalone Python API architecture enables GPU-based parallelization across thousands of simultaneous virtual environments, bypassing the sample inefficiency bottleneck of physical robotic learning.
+To enable risk-free training and pre-verification of contact-rich tasks, we construct a high-fidelity simulation environment using NVIDIA Isaac Sim. Powered by a GPU-accelerated tensor physics engine, the simulation environment accurately models rigid-body dynamics, joint torques, and frictional contacts. Signed Distance Field (SDF) collision meshes are assigned to gripper fingers and labware holders for penetration-free contact simulation. Crucially, the standalone Python API architecture enables GPU-based parallelization across thousands of simultaneous virtual environments, bypassing the sample inefficiency bottleneck of physical robotic learning.
 
-\subsection{Closed-Loop Physical--Virtual Synchronization and Predictive Control}
-\label{subsec:online_twin}
+\subsection{State Synchronization Between Simulation and Physical Environments}
+\label{subsec:state_sync}
 
-The online twin is organized as a three-stage loop: time-aligned multimodal state synchronization, online parameter calibration, and twin-based prediction before physical execution. This design is distinct from using Isaac Sim only as an offline policy-training environment. The following equations specify the proposed implementation; its latency, prediction accuracy, and effect on physical success require the dedicated validation described in Section~\ref{subsec:online_twin_eval}.
+We define a state interface between the physical robot and the Isaac Sim environment. Joint encoders provide arm positions $\mathbf q_t$ and velocities $\dot{\mathbf q}_t$; the gripper reports opening and grasp confirmation. RGB-D observations provide each visible object's position $\mathbf p_{i,t}$, orientation $\mathbf R_{i,t}$, and detection confidence. Object velocity is estimated only when consecutive reliable observations are available. Each record retains its acquisition timestamp and source, so the simulator can distinguish a measured state from an estimated one.
 
-\subsubsection{Time-Aligned Multimodal State Synchronization}
-Timestamped joint encoders, mobile-base odometry and IMU measurements, RGB-D and ArUco object poses, gripper force, and discrete workflow events are collected through the ROS interface. All measurements are transformed into a common laboratory frame using calibrated extrinsics. At twin time $t$, a bounded temporal buffer interpolates joint and base positions, applies quaternion interpolation to orientations, and rejects stale observations. A state estimator fuses the aligned observations $\mathcal{Z}_{t}$ into a state and uncertainty estimate:
-\begin{equation}
- (\hat{x}_{t},\Sigma_t)=\mathcal{F}(\mathcal{Z}_{t};\mathcal{T}_{\mathrm{cal}}),
- \qquad x^{\mathrm{sim}}_t=\mathcal{T}_{\mathrm{real}\rightarrow\mathrm{sim}}(\hat{x}_t),
-\end{equation}
-where $\mathcal{T}_{\mathrm{cal}}$ denotes the calibrated sensor transforms. Robot joints are mirrored kinematically, whereas object poses are updated from confidence-weighted visual estimates. During occlusion after a verified grasp, the object pose is propagated from the end-effector pose and the estimated grasp transform. Each state carries its acquisition timestamp and covariance; excessive latency or uncertainty disables prediction-based intervention rather than treating a stale twin as ground truth.
-
-\subsubsection{Online Calibration from Twin--Real Residuals}
-Let $\xi$ contain a small, identifiable set of physical parameters, such as mobile-base response delay and velocity gain, container mass, and gripper contact parameters. After a physical action, the corresponding simulated trajectory is compared with observations over a sliding window $\mathcal{W}_t$:
-\begin{equation}
- \xi_t^*=\arg\min_{\xi\in\Xi}\sum_{k\in\mathcal{W}_t}
- \left\|y_k^{\mathrm{real}}-y_k^{\mathrm{sim}}(\xi)\right\|_{W_k}^{2}
- +\lambda\left\|\xi-\xi_{t-1}\right\|_2^2.
-\end{equation}
-Only parameters supported by informative measurements are updated; parameters with poor observability retain their previous values. The calibrated model is validated on held-out trajectories before being used for decision support, limiting drift caused by sensor noise or model mismatch.
-
-\subsubsection{Prediction-Gated Physical Decisions}
-From the synchronized state, a separate prediction instance rolls out candidate actions $u^{(j)}$ over horizon $H$, without overwriting the state-mirroring instance. For liquid transport, candidates may be velocity profiles satisfying collision and actuator limits. The decision rule is
-\begin{equation}
-\begin{aligned}
- u_t^*=\arg\min_{u^{(j)}\in\mathcal{U}_{\mathrm{safe}}}\bigl[&T^{(j)}
- +w_s\hat{P}_{\mathrm{spill}}^{(j)}
- +w_c\hat{P}_{\mathrm{collision}}^{(j)}\\
- &+w_d\operatorname{tr}(\Sigma_{t+H}^{(j)})\bigr].
-\end{aligned}
-\end{equation}
-The selected action is executed only if state freshness, prediction uncertainty, and safety checks satisfy predefined thresholds; otherwise the system falls back to the existing conservative planner or pauses for operator review. The resulting physical observations close the loop by updating both the synchronized state and the calibration residuals. The spill-risk predictor must be calibrated against measured liquid outcomes; trajectory jerk alone is not used as a surrogate for spill probability.
+Before updating the simulation, camera observations are transformed into the robot-base frame using calibrated extrinsics, and robot and object samples are aligned to a common timestamp. Joint positions are interpolated between encoder samples; object poses are updated from the latest valid visual observation. During brief occlusion after a force-confirmed grasp, the held object's pose is propagated from the end-effector pose and the measured grasp transform. The interface rejects stale or low-confidence object observations instead of presenting them as current measurements. These synchronized states support visualization and comparison of simulated and physical trajectories; they do not, by themselves, establish predictive accuracy or closed-loop control performance.
 
 \subsection{Constraint-Aware Motion Planning for Macroscopic Navigation}
 \label{subsec:macro_planning}
@@ -55,7 +28,7 @@ The selected action is executed only if state freshness, prediction uncertainty,
 \begin{figure}[htbp]
     \centering
     \includegraphics[width=0.9\linewidth]{images/environment_design.png}
-    \caption{High-fidelity digital twin sandbox environment built upon Isaac Sim. This simulation environment integrates a UR3 manipulator and a Robotiq 2F-85 parallel gripper, and employs Signed Distance Field (SDF) collision meshes to achieve accurate contact modeling .}
+    \caption{High-fidelity simulation environment built upon Isaac Sim. This simulation environment integrates a UR3 manipulator and a Robotiq 2F-85 parallel gripper, and employs Signed Distance Field (SDF) collision meshes to achieve accurate contact modeling .}
     \label{fig:sim_env}
 \end{figure}
 
@@ -97,7 +70,7 @@ For labware grasping and lifting, explicitly modeling micro-contact dynamics is 
 \begin{figure}[htbp]
     \centering
     \includegraphics[width=0.9\linewidth]{images/Large scale parallel training.png}
-    \caption{High-fidelity digital twin sandbox environment built upon Isaac Sim. This simulation environment integrates a UR3 manipulator and a Robotiq 2F-85 parallel gripper, and employs Signed Distance Field (SDF) collision meshes to achieve accurate contact modeling .}
+    \caption{High-fidelity simulation environment built upon Isaac Sim. This simulation environment integrates a UR3 manipulator and a Robotiq 2F-85 parallel gripper, and employs Signed Distance Field (SDF) collision meshes to achieve accurate contact modeling .}
     \label{fig:sim_env_parallel}
 \end{figure}
 
@@ -199,7 +172,7 @@ Object Position (cm) & -- & $\pm 3$ \\ \hline\hline
 \subsection{Imitation Learning and Few-Shot Sim-to-Real Fine-Tuning}
 \label{subsec:arm_il_adaptation}
 
-For precision-critical micro-manipulations such as micro-pipetting and droplet dispensing, we introduce a teleoperation-guided Imitation Learning (IL) pipeline. Expert demonstrations $\mathcal{D}_{\text{sim}} = \{(s_t, a_t)\}_{i=1}^N$ are collected within the digital twin using a 6-DoF SpaceMouse interface. A visuomotor policy $\pi_\theta(a_t | s_t)$ is pre-trained via Behavioral Cloning (BC):
+For precision-critical micro-manipulations such as micro-pipetting and droplet dispensing, we introduce a teleoperation-guided Imitation Learning (IL) pipeline. Expert demonstrations $\mathcal{D}_{\text{sim}} = \{(s_t, a_t)\}_{i=1}^N$ are collected within the simulation environment using a 6-DoF SpaceMouse interface. A visuomotor policy $\pi_\theta(a_t | s_t)$ is pre-trained via Behavioral Cloning (BC):
 \begin{equation}
     \mathcal{L}_{\text{BC}}(\theta) = \mathbb{E}_{(s_t, a_t) \sim \mathcal{D}_{\text{sim}}} \left[ \left\| \pi_\theta(s_t) - a_t \right\|_2^2 \right]
 \end{equation}
@@ -229,31 +202,4 @@ The HSM has states such as \texttt{approach}, \texttt{grasp}, \texttt{verify}, \
 
 If grasp verification fails, the HSM stops transit and returns to \texttt{grasp} after a safe repositioning action. A retry counter and timeout bound repeated attempts; exhaustion moves the system to a safe-stop state for operator review. This is a specified recovery mechanism, not evidence of an improved recovery rate. Its contribution should be evaluated against a fixed sequential state machine without recovery, using stage-level and full-workflow success, recovery attempts, intervention count, and completion time.
 
-\subsection{Vision-Guided Inter-Platform Handover Protocol}
-\label{subsec:handover}
-
-Reliable container transfer between the mobile robot and workstation manipulators constitutes a critical failure point in multi-platform laboratory automation. To address this, we introduce a structured handover protocol integrating visual localization, docking verification, and force-sensor confirmation.
-
-\subsubsection{ArUco Marker-Based Tray Localization}
-The mobile robot's transport tray is equipped with four ArUco fiducial markers at known positions. Given the camera intrinsic matrix $\mathbf{K}$ and the detected marker corners in the image plane, the tray pose $\mathbf{T}_{\text{tray}}^{cam} \in SE(3)$ is estimated via Perspective-n-Point (PnP) solving:
-\begin{equation}
-    \mathbf{T}_{\text{tray}}^{cam} = \arg\min_{\mathbf{T}} \sum_{i=1}^{4} \left\| \mathbf{u}_i - \pi(\mathbf{K} \mathbf{T} \mathbf{p}_i) \right\|^2
-\end{equation}
-where $\mathbf{u}_i$ are the detected 2D marker centroids, $\mathbf{p}_i \in \mathbb{R}^3$ are the corresponding 3D positions in the tray frame, and $\pi(\cdot)$ denotes the perspective projection. The resulting pose is transformed into the robot base frame via the calibrated extrinsic hand-eye transformation $\mathbf{T}_{cam}^{base}$.
-
-\subsubsection{Docking Confirmation Signal Sequence}
-The handover follows a structured finite-state protocol to prevent premature container release. The sequence proceeds as:
-\begin{enumerate}
-    \item \textbf{Approach}: The mobile robot navigates to the docking waypoint within the manipulator's workspace.
-    \item \textbf{Alignment}: The manipulator's end-effector aligns with the tray container pose, verified by $\|\mathbf{p}_{ee} - \mathbf{p}_{\text{target}}\| < \epsilon_{pos}$ and $\angle(\mathbf{R}_{ee}, \mathbf{R}_{\text{target}}) < \epsilon_{ori}$.
-    \item \textbf{Ready Signal}: Both platforms publish a \texttt{READY} flag via the ROS communication bridge.
-    \item \textbf{Transfer}: The manipulator grasps the container while the mobile robot maintains tray stability.
-    \item \textbf{Confirmation}: Force-sensor readings at the gripper verify successful grasp before the mobile robot departs.
-\end{enumerate}
-
-\subsubsection{Force-Sensor Grasp Verification}
-To confirm successful container acquisition, we monitor the gripper's force-torque sensor readings. A successful handover is declared when the measured grasp force $f_{\text{grasp}}$ exceeds a minimum threshold sustained over a time window $\Delta t$:
-\begin{equation}
-    \text{Handover\_Success} = \mathbb{I}\left[ \frac{1}{\Delta t} \int_{t_0}^{t_0+\Delta t} f_{\text{grasp}}(\tau) \, d\tau > f_{\min} \right]
-\end{equation}
-where $f_{\min} = 2.0\,\text{N}$ is empirically determined to reliably detect glass vial acquisition while rejecting false positives from contact noise. This multi-modal verification protocol ensures robust inter-platform coordination even under visual occlusion or environmental disturbances.
+Containers are transferred between the mobile platform and workstation manipulators at designated task stages. The task sequence records transfer completion before proceeding.

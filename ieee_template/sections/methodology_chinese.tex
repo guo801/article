@@ -4,50 +4,23 @@
 \begin{figure}[htbp]
     \centering
     \includegraphics[width=\linewidth]{images/Framework.png}
-    \caption{数字孪生驱动的混合机器人端到端操作框架。系统采用宏微观解耦策略：宏观转移由约束感知的经典规划器控制以确保绝对防泼洒安全，而微观接触密集型任务由神经网络策略执行。}
+    \caption{多平台混合机器人端到端操作框架。系统采用宏微观解耦策略：宏观转移由约束感知的经典规划器控制以确保绝对防泼洒安全，而微观接触密集型任务由神经网络策略执行。}
     \label{fig:overall_framework}
 \end{figure}
 
-本章详细介绍了专为生化自动化化验（包括溶液配置、水滴角检测和梯度稀释）量身定制的数字孪生驱动混合机器人框架。为了应对异构任务需求，跨工位宏观转移由约束感知经典规划执行，而灵巧的机械臂操作则由融合了大规模并行深度强化学习（DRL）与人在回路模仿学习（IL）的混合学习架构统筹。
+本章详细介绍了专为生化自动化化验（包括溶液配置、水滴角检测和梯度稀释）量身定制的多平台混合机器人框架。为了应对异构任务需求，跨工位宏观转移由约束感知经典规划执行，而灵巧的机械臂操作则由融合了大规模并行深度强化学习（DRL）与人在回路模仿学习（IL）的混合学习架构统筹。
 
-\subsection{物理驱动的数字孪生构建}
-\label{subsec:dt_construction}
+\subsection{用于策略训练的仿真环境}
+\label{subsec:simulation_training}
 
-为了实现接触密集型任务的无风险训练与预验证，我们利用NVIDIA Isaac Sim构建了高保真数字孪生。在GPU加速张量物理引擎的驱动下，数字孪生能够准确建模刚体动力学、关节力矩和摩擦接触。夹爪和器材固定架均赋予了有符号距离场（SDF）碰撞网格，以实现无穿透的接触仿真。至关重要的是，独立的Python API架构实现了跨数千个并发虚拟环境的GPU并行化，彻底突破了物理机器人学习中样本效率低下的瓶颈。
+为了实现接触密集型任务的无风险训练与预验证，我们利用NVIDIA Isaac Sim构建了高保真仿真环境。在GPU加速张量物理引擎的驱动下，仿真环境能够准确建模刚体动力学、关节力矩和摩擦接触。夹爪和器材固定架均赋予了有符号距离场（SDF）碰撞网格，以实现无穿透的接触仿真。至关重要的是，独立的Python API架构实现了跨数千个并发虚拟环境的GPU并行化，彻底突破了物理机器人学习中样本效率低下的瓶颈。
 
-\subsection{物理--虚拟状态同步、在线校准与预测决策闭环}
-\label{subsec:online_twin}
+\subsection{仿真环境与实体环境的状态同步}
+\label{subsec:state_sync}
 
-在线数字孪生由三个连续环节构成：时间对齐的多模态状态同步、基于虚实残差的在线参数校准，以及物理动作执行前的孪生预测。这一区别于仅将Isaac Sim用于离线策略训练。以下给出拟实现的算法定义；其同步延迟、预测精度和对真实任务成功率的影响仍需按照第\ref{subsec:online_twin_eval}节的方案单独验证。
+我们定义实体机器人与Isaac Sim仿真环境之间的状态接口。关节编码器提供机械臂关节位置$\mathbf q_t$和速度$\dot{\mathbf q}_t$，夹爪提供开合状态与抓取确认信号；RGB-D视觉观测提供可见物体的位置$\mathbf p_{i,t}$、姿态$\mathbf R_{i,t}$及检测置信度。仅在连续观测可靠时估计物体速度。每条状态记录保留采集时间戳和数据来源，以区分直接测量与估计状态。
 
-\subsubsection{时间对齐的多模态状态同步}
-通过ROS接口采集带时间戳的机械臂关节编码器、移动底盘里程计与IMU、RGB-D与ArUco物体位姿、夹爪力以及离散工作流事件。利用已标定的外参将观测统一到实验室坐标系；在有界时间缓存中对位置进行插值、对姿态进行四元数球面插值，并剔除过期观测。状态估计器将对齐后的观测$\mathcal{Z}_{t}$融合为状态及其不确定度：
-\begin{equation}
- (\hat{x}_{t},\Sigma_t)=\mathcal{F}(\mathcal{Z}_{t};\mathcal{T}_{\mathrm{cal}}),
- \qquad x^{\mathrm{sim}}_t=\mathcal{T}_{\mathrm{real}\rightarrow\mathrm{sim}}(\hat{x}_t),
-\end{equation}
-其中$\mathcal{T}_{\mathrm{cal}}$为传感器标定变换。机器人关节采用运动学镜像，物体位姿由带置信度的视觉估计更新；经力反馈确认抓取后，如物体受到遮挡，则根据末端位姿与抓取变换传播物体位姿。每个状态保留采集时间和协方差；若延迟或不确定度超阈值，则禁用预测干预，避免把过期孪生状态当作真实状态。
-
-\subsubsection{基于虚实残差的在线参数校准}
-令$\xi$仅包含可辨识的少量物理参数，例如底盘响应延迟和速度增益、容器质量与夹爪接触参数。每次物理动作后，在滑动窗口$\mathcal{W}_t$内比较真实观测与对应的仿真轨迹：
-\begin{equation}
- \xi_t^*=\arg\min_{\xi\in\Xi}\sum_{k\in\mathcal{W}_t}
- \left\|y_k^{\mathrm{real}}-y_k^{\mathrm{sim}}(\xi)\right\|_{W_k}^{2}
- +\lambda\left\|\xi-\xi_{t-1}\right\|_2^2.
-\end{equation}
-仅更新有充分观测支持的参数；可观测性不足时保留旧值。更新后的模型先在未参与校准的轨迹上验证，再用于决策，以降低传感器噪声和模型失配引发的参数漂移。
-
-\subsubsection{孪生预测驱动的物理决策}
-从同步状态出发，在独立的预测实例中对候选动作$u^{(j)}$进行长度为$H$的前向推演，不覆盖状态镜像实例。以液体运输为例，候选动作可为满足避障与执行器约束的速度曲线，其选择规则为
-\begin{equation}
-\begin{aligned}
- u_t^*=\arg\min_{u^{(j)}\in\mathcal{U}_{\mathrm{safe}}}\bigl[&T^{(j)}
- +w_s\hat{P}_{\mathrm{spill}}^{(j)}
- +w_c\hat{P}_{\mathrm{collision}}^{(j)}\\
- &+w_d\operatorname{tr}(\Sigma_{t+H}^{(j)})\bigr].
-\end{aligned}
-\end{equation}
-只有状态新鲜度、预测不确定度及安全检查满足预设阈值时才执行所选动作；否则退回原有保守规划器或暂停并请求人工确认。物理执行结果再更新状态估计与校准残差，形成闭环。溢出风险预测器需由实际液体实验校准，不能仅以轨迹加加速度代替溢出概率。
+更新仿真场景前，利用标定外参将视觉观测转换到机器人基座坐标系，并将关节与物体观测对齐到共同时间戳。关节位置在相邻编码器采样之间插值；物体位姿由最近一次有效视觉观测更新。物体在力反馈确认抓取后短暂遮挡时，根据末端位姿和已估计的抓取变换传播其位姿。对过期或低置信度的物体观测不作为当前测量使用。同步后的状态用于可视化和比较仿真与实体轨迹；状态同步本身不能证明仿真预测精度或闭环控制性能。
 
 \subsection{面向宏观导航的约束感知运动规划}
 \label{subsec:macro_planning}
@@ -55,7 +28,7 @@
 \begin{figure}[htbp]
     \centering
     \includegraphics[width=0.9\linewidth]{images/environment_design.png}
-    \caption{基于Isaac Sim构建的高保真数字孪生沙盒环境。该仿真环境集成了UR3机械臂和Robotiq 2F-85平行夹爪，并采用有符号距离场（SDF）碰撞网格实现精确的接触建模。}
+    \caption{基于Isaac Sim构建的高保真仿真环境。该仿真环境集成了UR3机械臂和Robotiq 2F-85平行夹爪，并采用有符号距离场（SDF）碰撞网格实现精确的接触建模。}
     \label{fig:sim_env}
 \end{figure}
 
@@ -143,7 +116,7 @@ MDP的目标是找到一个策略$\pi$，使得期望累积折扣奖励最大化
 \begin{figure}[htbp]
     \centering
     \includegraphics[width=0.9\linewidth]{images/Large scale parallel training.png}
-    \caption{基于Isaac Sim构建的高保真数字孪生沙盒环境。该仿真环境集成了UR3机械臂和Robotiq 2F-85平行夹爪，并采用有符号距离场（SDF）碰撞网格实现精确的接触建模。}
+    \caption{基于Isaac Sim构建的高保真仿真环境。该仿真环境集成了UR3机械臂和Robotiq 2F-85平行夹爪，并采用有符号距离场（SDF）碰撞网格实现精确的接触建模。}
     \label{fig:sim_env_parallel}
 \end{figure}
 
@@ -283,7 +256,7 @@ GAE参数$\lambda$ & 0.95 \\
 \subsection{模仿学习与少样本虚实迁移微调}
 \label{subsec:arm_il_adaptation}
 
-对于微量移液和液滴滴加等精度要求极高的微观操作，我们引入了遥操作引导的模仿学习（IL）管线。利用6自由度SpaceMouse接口在数字孪生中采集专家示教数据$\mathcal{D}_{\text{sim}} = \{(s_t, a_t)\}_{i=1}^N$，并通过行为克隆（BC）预训练视觉运动策略$\pi_\theta(a_t | s_t)$：
+对于微量移液和液滴滴加等精度要求极高的微观操作，我们引入了遥操作引导的模仿学习（IL）管线。利用6自由度SpaceMouse接口在仿真中采集专家示教数据$\mathcal{D}_{\text{sim}} = \{(s_t, a_t)\}_{i=1}^N$，并通过行为克隆（BC）预训练视觉运动策略$\pi_\theta(a_t | s_t)$：
 \begin{equation}
     \mathcal{L}_{\text{BC}}(\theta) = \mathbb{E}_{(s_t, a_t) \sim \mathcal{D}_{\text{sim}}} \left[ \left\| \pi_\theta(s_t) - a_t \right\|_2^2 \right]
 \end{equation}

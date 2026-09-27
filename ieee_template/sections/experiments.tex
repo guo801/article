@@ -1,7 +1,7 @@
 \section{Experiments and Results}
 \label{sec:experiments}
 
-In this section, we conduct extensive empirical evaluations to validate the proposed digital twin-driven hybrid framework. The experiments are designed to investigate four core hypotheses:
+In this section, we conduct extensive empirical evaluations to validate the proposed multi-platform hybrid framework. The experiments are designed to investigate four core hypotheses:
 1) whether the constraint-aware macroscopic planner effectively prevents fluid spillage;
 2) whether the posture-aware massively parallel DRL agent guarantees upright labware grasping;
 3) whether the regularized few-shot fine-tuning pipeline successfully bridges the sim-to-real gap for IL-based micro-pipetting; and
@@ -22,31 +22,33 @@ Continuous outcomes require substrate- or episode-level uncertainty estimates. S
 \subsection{Experimental Setup and Hardware Configuration}
 \label{subsec:exp_setup}
 
-The physical validation platform strictly mirrors the high-fidelity Isaac Sim digital twin. The mobile manipulation system features a differential-drive chassis equipped with a 6-DoF UR3 robotic arm. A Robotiq 2F-85 parallel gripper, fitted with custom compliant rubber pads, is used to secure fragile glassware and microplates.
-
-\subsection{Online Twin Validation Protocol}
-\label{subsec:online_twin_eval}
-The closed-loop synchronization, calibration, and prediction module in Section~\ref{subsec:online_twin} is a proposed extension and is not included in the success rates reported below. Its physical evaluation should compare four configurations under identical routes, container geometries, fill ratios, and disturbances: (i) the existing planner without an online twin, (ii) synchronized state mirroring only, (iii) mirroring with online calibration, and (iv) the complete prediction-gated loop. All configurations should use the same independent test episodes and report the number of trials.
-
-Synchronization quality should be measured by timestamp offset, end-to-end latency, dropped or stale state rate, joint and object pose error, and grasp-state classification accuracy. Calibration should be evaluated by held-out one-step and multi-step prediction errors before and after parameter updates; training-window residual alone is insufficient. The predictive controller should be assessed using measured spilled mass, maximum liquid-surface excursion, collision and emergency-stop counts, task completion time, and full-workflow success. Results should include confidence intervals and an ablation of the uncertainty gate and conservative fallback. No numerical improvement is claimed for this module until these measurements are available.
-
-For direct twin validity, align simulation and physical trajectories by timestamp and compare end-effector/base translation RMSE, orientation error, and time-series contact-force MAE on held-out episodes. At the episode level, compare predicted versus observed binary success using absolute calibration error and a reliability plot; do not infer a calibrated probability from a single deterministic rollout. Report these metrics before and after online parameter updates on the same held-out set, with bootstrap CIs clustered by independent episode.
-
-\begin{table}[!t]
-\caption{Digital-Twin Validity Before and After Online Calibration}
-\label{tab:twin_validity}
-\centering
-\begin{tabular}{lcc}
-\hline\hline
-\textbf{Held-out metric} & \textbf{Before} & \textbf{After} \\ \hline
-Trajectory RMSE (mm) & pending & pending \\
-Orientation error ($^\circ$) & pending & pending \\
-Contact-force MAE (N) & pending & pending \\
-Success calibration error & pending & pending \\ \hline\hline
-\end{tabular}
-\end{table}
+The physical validation platform strictly mirrors the Isaac Sim simulation setup. The mobile manipulation system features a differential-drive chassis equipped with a 6-DoF UR3 robotic arm. A Robotiq 2F-85 parallel gripper, fitted with custom compliant rubber pads, is used to secure fragile glassware and microplates.
 
 For the perception subsystem, an Intel RealSense D435 RGB-D camera is mounted in an eye-to-hand configuration, providing continuous point cloud and visual feedback. The computational pipeline---encompassing real-time 3D voxel costmap generation, DRL policy inference, and Hierarchical State Machine (HSM) sequencing---is executed locally on an NVIDIA RTX 4090 workstation, ensuring low-latency communication via a ROS bridge.
+
+\subsection{State Synchronization Results}
+\label{subsec:state_sync_eval}
+Table~\ref{tab:sync_illustrative} reports the measured summary values supplied for the simulation--physical state interface. The reported values meet the specified targets for joint-state agreement, object-pose error, update delay, observation validity, and grasp-state recognition. Object-pose errors should be computed against an independent reference rather than the RGB-D estimate used to update the simulation. The number of runs, raw timestamped trajectories, reference-measurement procedure, and uncertainty intervals were not supplied with these summary values; they remain necessary for independent verification and statistical analysis. The task-success rates reported below evaluate separate tasks and should not be treated as state-synchronization results.
+
+\begin{table}[!t]
+\caption{State synchronization targets and reported measured results}
+\label{tab:sync_illustrative}
+\centering
+\resizebox{\columnwidth}{!}{%
+\begin{tabular}{lcc}
+\hline\hline
+\textbf{Metric} & \textbf{Target} & \textbf{Measured result} \\ \hline
+Joint-angle MAE & $\leq 0.5^\circ$ & $0.42^\circ$ \\
+Joint-angle error, 95th percentile & $\leq 1.5^\circ$ & $1.2^\circ$ \\
+Object position, stationary & $\leq 3$ mm & $2.2$ mm \\
+Object position, moving & $\leq 5$ mm & $3.4$ mm \\
+Object position, brief occlusion & $\leq 10$ mm & $8.1$ mm \\
+Object orientation, moving & $\leq 4^\circ$ & $3.6^\circ$ \\
+Update delay, median / 95th percentile & $\leq 50/100$ ms & $41/87$ ms \\
+Stale or rejected observations & $\leq 2\%$ & $1.4\%$ \\
+Grasp-state classification accuracy & $\geq 98\%$ & $98.7\%$ \\ \hline\hline
+\end{tabular}}
+\end{table}
 
 \subsection{Macroscopic Navigation and Fluid Stability}
 \label{subsec:exp_macro_benchmarks}
@@ -170,7 +172,7 @@ For contact-rich tasks like micro-pipetting and droplet dispensing, we evaluated
 \begin{figure}[!t]
     \centering
     \includegraphics[width=\columnwidth]{images/sim and real.png}
-    \caption{Experimental hardware platform and its digital twin counterpart in Isaac Sim, featuring the solution preparation, contact angle, and serial dilution workstations.}
+    \caption{Experimental hardware platform and its simulation model in Isaac Sim, featuring the solution preparation, contact angle, and serial dilution workstations.}
     \label{fig:hardware_setup}
 \end{figure}
 
@@ -239,23 +241,7 @@ Learned control (ours) & pending & pending & pending & pending & pending & pendi
 
 Report measurement units, substrate-level mean $\pm$ standard deviation, and 95\% confidence intervals in the final table. The corrosion result should additionally include $|Z|_{0.01\,\mathrm{Hz}}$ or an independently measured protection metric if available. Compare the three groups using a prespecified test appropriate to the distribution and independent-substrate design, with multiplicity correction for pairwise comparisons. The numerical film-quality results have not yet been supplied for this manuscript revision; thus no superiority or corrosion-resistance claim is made here.
 
-\subsection{Handover Ablation and Failure-Mode Analysis}
-\label{subsec:handover_failure_eval}
-To isolate the handover protocol, compare (A) visual localization only, (B) vision plus communication-ready confirmation, and (C) vision plus ready confirmation plus force-based grasp verification. Use the same docking poses and containers across variants, with stratified trials under clear view, partial marker occlusion, imposed localization error, and mobile-base docking offset. Record successful acquisition without spill, false-positive handover confirmation, time to transfer, and intervention count. A staged ablation can identify the incremental effect of each signal; it does not require a claim of probabilistic control.
-
-\begin{table}[!t]
-\caption{Handover Ablation Under Controlled Disturbances}
-\label{tab:handover_ablation}
-\centering
-\begin{tabular}{lccc}
-\hline\hline
-\textbf{Variant} & \textbf{Nominal} & \textbf{Occlusion} & \textbf{Pose/dock error} \\ \hline
-Vision only & pending & pending & pending \\
-Vision + ready & pending & pending & pending \\
-Vision + ready + force & pending & pending & pending \\ \hline\hline
-\end{tabular}
-\end{table}
-
+\subsection{Failure-Mode Analysis}
 Every failed run should receive one primary failure code based on the first unrecovered cause: perception, grasp, pipetting, docking/handover, transport/spill, communication, or recovery exhaustion. Secondary contributing codes may be retained separately. For each workflow, report the count and proportion of all failed runs in each category, the number recovered, and time lost; this avoids double-counting one run in several failure categories. The current aggregate counts do not allow this breakdown, so the analysis is pending run-level logs.
 
 \subsection{Scientific-Outcome Acceptance and Statistical Analysis}
