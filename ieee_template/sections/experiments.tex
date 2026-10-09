@@ -167,20 +167,34 @@ Increasing $N_{\text{env}}$ from 256 to 4096 yields a $6.9\times$ speedup in tra
 \subsection{IL Sim-to-Real Transfer for Precision Micro-Manipulation}
 \label{subsec:exp_il_pipetting}
 
-For contact-rich tasks like micro-pipetting and droplet dispensing, we evaluated the IL-based visuomotor policy. To analyze the efficacy of the sim-to-real transfer, we compared three variants across the core workflows: 1) \textit{Vanilla BC} (zero-shot transfer without DR); 2) \textit{DR Only} (domain randomization in simulation); and 3) \textit{Ours (DR + Few-Shot)} (utilizing $M=10$ real-world demonstrations with regularization).
+The Panda hardware photographs are incorporated in Fig.~\ref{fig:hsm_recovery_mechanism}; they are not repeated here and do not substitute for quantitative task evaluation.
 
+For precision operations such as pipetting and droplet dispensing, the existing skill-level evaluation compares three IL variants: 1) \textit{Vanilla BC} (simulation training and zero-shot deployment without DR); 2) \textit{DR Only} (simulation training with domain randomization and no real demonstrations); and 3) \textit{DR + Few-Shot} (the DR policy adapted using $M=10$ complete real-world demonstrations with parameter regularization). These comparisons concern individual skills, not complete material-fabrication workflows.
+
+\subsubsection{Supplementary Transfer-Evaluation Protocol}
+\label{subsec:transfer_protocol}
+To connect skill transfer with reliable materials experiments, we specify a supplementary evaluation on a precision operation actually used in the workflow, such as pipetting or targeted dispensing. This protocol is prospective: the existing aggregate tables do not establish that all controls and precision measurements below were used. Hold the policy architecture, simulation demonstration set, nominal task settings, and evaluation budget fixed across the three transfer variants; the intended differences are DR and real-data adaptation. Use matched initial-condition sets, randomize execution order, and reset the workcell between trials. Independently repeat training or adaptation with multiple seeds and report both policy-level variability and trial-level outcomes.
+
+One demonstration is a complete operation trajectory, not an individual image or frame. Keep real demonstrations and validation data separate from physical test runs; freeze the policy and evaluation thresholds before testing. For an initial study, plan at least 30 independent physical trials per method and test condition, with the final sample size determined by the desired interval width and comparison power. Report whether these trials are distributed across trained policies; repeated trials of one policy do not measure training variability.
+
+For pipetting, measure delivered mass with a calibrated balance and convert to volume using the liquid density at the recorded temperature. Report signed bias, mean absolute relative volume error, and delivery CV for repeated nominal doses. For targeted dispensing, report the distance between the measured deposit centroid and the prescribed target in a calibrated plane; evaluate dose error separately if dose is part of the task. Prespecify task-specific volume or position tolerances. Count a run as successful only when all required precision tolerances are met without collision, unintended spill, or unplanned human intervention. Preserve every test run, including failures; report completed-run precision together with failure counts rather than silently excluding failed operations. Report successes/$n$ and Wilson 95\% CIs, and precision estimates with run-level uncertainty intervals.
+
+% Temporarily hidden at the author's request (former Fig. 6).
+\iffalse
 \begin{figure}[!t]
     \centering
     \includegraphics[width=\columnwidth]{images/sim and real.png}
     \caption{Experimental hardware platform and its simulation model in Isaac Sim, featuring the solution preparation, contact angle, and serial dilution workstations.}
     \label{fig:hardware_setup}
 \end{figure}
+\fi
 
 \begin{table}[!t]
 \renewcommand{\arraystretch}{1.3}
 \caption{Sim-to-Real IL Success Rates for Individual Skills (not complete workflows)}
 \label{tab:il_manipulation}
 \centering
+\resizebox{\columnwidth}{!}{%
 \begin{tabular}{lcccccc}
 \hline\hline
 \textbf{Task} & \multicolumn{2}{c}{\textbf{Vanilla BC}} & \multicolumn{2}{c}{\textbf{DR Only}} & \multicolumn{2}{c}{\textbf{Ours (Full)}} \\ \hline
@@ -190,6 +204,7 @@ Droplet Dispensing & 50\,/\,9 & 18.0\% & 50\,/\,29 & 58.0\% & 50\,/\,\textbf{40}
 Serial Dilution & 50\,/\,14 & 28.0\% & 50\,/\,32 & 64.0\% & 50\,/\,\textbf{42} & \textbf{84.0\%} \\ \hline
 \textbf{Pooled skill trials} & 150\,/\,43 & 28.7\% & 150\,/\,94 & 62.7\% & 150\,/\,\textbf{124} & \textbf{82.7\%} \\ \hline\hline
 \end{tabular}
+}
 \end{table}
 
 The Wilson 95\% CIs for the pooled skill-trial rates are [22.0,36.4]\%, [54.7,70.0]\%, and [75.8,87.9]\% for Vanilla BC, DR Only, and DR + Few-Shot, respectively. These pooled denominators do not represent complete end-to-end runs and should not be used as workflow success rates. The 50-trial Wilson CIs for the proposed method are [71.5,91.7]\% for pipetting, [67.0,88.8]\% for dispensing, and [71.5,91.7]\% for dilution.
@@ -217,10 +232,29 @@ We analyzed the impact of the number of real-world demonstrations $M$ on the fin
 \end{tabular}
 \end{table}
 
-The results demonstrate that $M=10$ demonstrations provide an excellent cost-performance tradeoff, achieving 84.0\% success rate with minimal human effort. Increasing $M$ beyond 10 yields diminishing returns, validating the efficiency of our regularized fine-tuning approach.
+The existing summary gives 84.0\% success at $M=10$, but does not by itself establish an optimal demonstration budget or a statistically reliable plateau. The task identity, demonstration duration, training seeds, and relationship of this evaluation batch to Table~\ref{tab:il_manipulation} must be documented before making that claim.
+
+For the supplementary sample-efficiency study, fix the DR-pretrained checkpoint and compare $M\in\{0,5,10,20\}$ complete real demonstrations; $M=0$ denotes the unchanged DR policy. Draw nested subsets from a training-only demonstration pool and repeat subset selection and adaptation across seeds, using the same held-out test-condition distribution for all budgets. Select hyperparameters using validation data, not test outcomes. Report precision, success with CIs, demonstration acquisition time, and adaptation time. The existing $M=50$ row is retained as a reported summary, not as a newly completed part of this supplementary study.
+
+\subsubsection{Held-Out Conditions and Generalization}
+\label{subsec:transfer_generalization}
+After adaptation, freeze all policies and evaluate nominal conditions, held-out configurations within the documented DR support, and conditions outside that support separately. Use controlled changes in object starting position, illumination, and compatible container dimensions, first varying one factor at a time. Report numerical training and testing ranges and the real-demonstration coverage. A condition is outside the training support only when it is absent from both simulation randomization and real adaptation data; new samples inside the DR ranges demonstrate in-distribution robustness, not out-of-distribution transfer. Restrict physical tests to the validated hardware safety envelope.
+
+Apply the same trial budget and task acceptance rules to each method and condition. Report absolute precision and success, changes relative to nominal conditions, and failure categories. Do not pool different conditions into a single generalization score without the condition-level results. These tests and their numerical outcomes remain pending; no generalization improvement is inferred from the current nominal success tables. In subsequent complete-workflow runs, carry the policy variant and run identifier through to film-quality measurements to examine whether improved operation performance also improves workflow reliability and accepted-film yield.
 
 \subsection{Thin-Film Fabrication and Materials-Quality Evaluation}
 \label{subsec:exp_dipcoat_quality}
+
+% Temporarily hidden at the author's request (former Fig. 7).
+\iffalse
+Figure~\ref{fig:thin_film_sequence} shows robotic access to the drying oven used in the film-processing workflow.
+\begin{figure*}[!t]
+    \centering
+    \includegraphics[width=0.9\textwidth]{images/thin_film.png}
+    \caption{Robotic oven-handling sequence in the thin-film processing workflow, read from left to right across the upper row and then the lower row. The snapshots show approach, door-handle manipulation, and access to the oven.}
+    \label{fig:thin_film_sequence}
+\end{figure*}
+\fi
 The completed dip-coating experiments should be reported as a materials-quality comparison, not only as robotic motion success. We compare three execution modes under the same precursor batch, substrate preparation, immersion depth, dwell time, withdrawal-speed target, drying/curing conditions, and measurement schedule: manual dip-coating by a trained operator, a fixed robot trajectory, and the proposed learned control policy. Substrates are randomly assigned to modes, and the operator performing materials characterization is blinded to the mode where feasible. The number of independent substrates, rather than the number of measurement points on one substrate, is the statistical sample size.
 
 Film thickness is measured at prespecified positions on each substrate. For substrate $i$, thickness uniformity is summarized by $\mathrm{CV}_{h,i}=100s(h_{ij})/\bar h_i$, with the within-substrate mean $\bar h_i$ and standard deviation $s(h_{ij})$ reported separately. Static water-contact angle is measured at multiple prespecified locations with the droplet volume and post-deposition delay held constant; report both the mean angle and spatial standard deviation. Surface roughness is reported as $R_a$ or $R_q$ from profilometry or AFM over a fixed scan area. Corrosion resistance is evaluated using the same electrolyte, exposed area, temperature, stabilization time, and electrochemical protocol for all groups; report corrosion-current density $i_{\mathrm{corr}}$ from polarization fitting and, where available, low-frequency impedance $|Z|_{0.01\,\mathrm{Hz}}$ from EIS. Coating success should be defined before analysis by explicit acceptance limits for uniformity, adhesion, and defects, not by visual inspection alone.
@@ -289,9 +323,9 @@ Serial dilution & pending & pending & pending \\ \hline\hline
 \end{tabular}
 \end{table}
 
-\begin{figure*}[!t]
-    \centering
-    % \includegraphics[width=\textwidth]{figures/end_to_end_snapshots.png}
-    \caption{Sequential snapshots of the autonomous three-stage laboratory workflow: (a)--(b) Upright labware grasping and reagent pipetting; (c)--(d) Constraint-aware transit and droplet dispensing for water contact angle detection; (e)--(f) High-precision serial dilution and microplate alignment.}
-    \label{fig:sequential_snapshots}
-\end{figure*}
+% \begin{figure*}[!t]
+%     \centering
+%     % \includegraphics[width=\textwidth]{figures/end_to_end_snapshots.png}
+%     \caption{Sequential snapshots of the autonomous three-stage laboratory workflow: (a)--(b) Upright labware grasping and reagent pipetting; (c)--(d) Constraint-aware transit and droplet dispensing for water contact angle detection; (e)--(f) High-precision serial dilution and microplate alignment.}
+%     \label{fig:sequential_snapshots}
+% \end{figure*}

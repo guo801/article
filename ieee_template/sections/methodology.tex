@@ -1,22 +1,38 @@
 \section{System Architecture and Methodology}
 \label{sec:methodology}
 
-\begin{figure}[htbp]
+\begin{figure*}[!t]
     \centering
-    \includegraphics[width=\linewidth]{images/Framework.png}
-    \caption{Multi-platform hybrid robotic end-to-end operation framework. The system employs a macro-micro decoupled strategy: macroscopic transit is controlled by a constraint-aware classical planner to ensure absolute spill-free safety, while microscopic contact-rich tasks are executed by neural network policies found within the rl file.}
+    \includegraphics[width=\textwidth]{images/Framework.png}
+    \caption{System control framework combining physical simulation and RGB-D perception, constrained trajectory planning, posture-aware reinforcement learning, imitation learning with sim-to-real adaptation, and a hierarchical state machine that invokes reusable skills for laboratory task execution.}
     \label{fig:overall_framework}
-\end{figure}
+\end{figure*}
 
 This section details the proposed multi-platform hybrid robotic framework tailored for automated bio-chemical assays, including solution preparation, contact angle detection, and serial dilution. To handle heterogeneous task requirements, macroscopic inter-station transit is executed via constraint-aware classical planning, while dexterous robotic arm manipulations are governed by a hybrid learning architecture combining massively parallel Deep Reinforcement Learning (DRL) and human-in-the-loop Imitation Learning (IL).
 
 \subsection{Simulation Environment for Policy Training}
 \label{subsec:simulation_training}
 
+Figure~\ref{fig:simulation_overview} summarizes environment construction, parallel skill training, and physical deployment.
+\begin{figure*}[!t]
+    \centering
+    \includegraphics[width=0.94\textwidth]{images/environment_design2.png}
+    \caption{Overview of simulation development and physical deployment: laboratory environment and asset construction, collision modeling and data acquisition; manipulation-skill development and parallel simulation; and sim-to-real deployment of laboratory operations.}
+    \label{fig:simulation_overview}
+\end{figure*}
+
 To enable risk-free training and pre-verification of contact-rich tasks, we construct a high-fidelity simulation environment using NVIDIA Isaac Sim. Powered by a GPU-accelerated tensor physics engine, the simulation environment accurately models rigid-body dynamics, joint torques, and frictional contacts. Signed Distance Field (SDF) collision meshes are assigned to gripper fingers and labware holders for penetration-free contact simulation. Crucially, the standalone Python API architecture enables GPU-based parallelization across thousands of simultaneous virtual environments, bypassing the sample inefficiency bottleneck of physical robotic learning.
 
 \subsection{State Synchronization Between Simulation and Physical Environments}
 \label{subsec:state_sync}
+
+Figure~\ref{fig:state_sync_mechanism} illustrates coordinate and temporal alignment, observation validation, and source-aware updates of the virtual workcell.
+\begin{figure*}[!t]
+    \centering
+    \includegraphics[width=\textwidth]{images/mechanisms/state_synchronization_mechanism.png}
+    \caption{Time-aligned physical-to-simulation state synchronization. Asynchronous joint, RGB-D, and gripper observations are aligned to a common time and validated before scene updates. Solid and dashed object outlines distinguish measured and propagated poses; synchronization supports visualization and comparison rather than establishing predictive closed-loop control. Robot drawings are schematic.}
+    \label{fig:state_sync_mechanism}
+\end{figure*}
 
 We define a state interface between the physical robot and the Isaac Sim environment. Joint encoders provide arm positions $\mathbf q_t$ and velocities $\dot{\mathbf q}_t$; the gripper reports opening and grasp confirmation. RGB-D observations provide each visible object's position $\mathbf p_{i,t}$, orientation $\mathbf R_{i,t}$, and detection confidence. Object velocity is estimated only when consecutive reliable observations are available. Each record retains its acquisition timestamp and source, so the simulator can distinguish a measured state from an estimated one.
 
@@ -25,12 +41,12 @@ Before updating the simulation, camera observations are transformed into the rob
 \subsection{Constraint-Aware Motion Planning for Macroscopic Navigation}
 \label{subsec:macro_planning}
 
-\begin{figure}[htbp]
-    \centering
-    \includegraphics[width=0.9\linewidth]{images/environment_design.png}
-    \caption{High-fidelity simulation environment built upon Isaac Sim. This simulation environment integrates a UR3 manipulator and a Robotiq 2F-85 parallel gripper, and employs Signed Distance Field (SDF) collision meshes to achieve accurate contact modeling .}
-    \label{fig:sim_env}
-\end{figure}
+% \begin{figure}[htbp]
+%     \centering
+%     \includegraphics[width=0.9\linewidth]{images/environment_design.png}
+%     \caption{High-fidelity simulation environment built upon Isaac Sim. This simulation environment integrates a UR3 manipulator and a Robotiq 2F-85 parallel gripper, and employs Signed Distance Field (SDF) collision meshes to achieve accurate contact modeling .}
+%     \label{fig:sim_env}
+% \end{figure}
 
 For macroscopic transit between workstations (e.g., carrying prepared reagent vials), we employ a constraint-aware classical motion planner. To prevent fluid sloshing during movement, strict task-space orientation constraints are imposed on the end-effector roll ($\phi$) and pitch ($\theta$):
 \begin{equation}
@@ -67,12 +83,6 @@ For labware grasping and lifting, explicitly modeling micro-contact dynamics is 
     \item \textbf{Discount Factor} $\gamma \in [0, 1)$: Balances immediate and future rewards.
 \end{itemize}
 
-\begin{figure}[htbp]
-    \centering
-    \includegraphics[width=0.9\linewidth]{images/Large scale parallel training.png}
-    \caption{High-fidelity simulation environment built upon Isaac Sim. This simulation environment integrates a UR3 manipulator and a Robotiq 2F-85 parallel gripper, and employs Signed Distance Field (SDF) collision meshes to achieve accurate contact modeling .}
-    \label{fig:sim_env_parallel}
-\end{figure}
 
 \subsubsection{Reward Function Design}
 \label{subsec:reward_design}
@@ -172,6 +182,14 @@ Object Position (cm) & -- & $\pm 3$ \\ \hline\hline
 \subsection{Imitation Learning and Few-Shot Sim-to-Real Fine-Tuning}
 \label{subsec:arm_il_adaptation}
 
+Figure~\ref{fig:sim_to_real_mechanism} summarizes the BC-based transfer pipeline, from randomized simulation demonstrations to regularized adaptation and independent physical evaluation.
+\begin{figure*}[!t]
+    \centering
+    \includegraphics[width=\textwidth]{images/mechanisms/sim_to_real_mechanism.png}
+    \caption{Sim-to-real adaptation for precision manipulation. Behavioral cloning with domain randomization provides the simulation policy; a small set of real demonstrations supports parameter-regularized fine-tuning. The illustrated bridges represent adaptation and deployment, while the comparison panel identifies evaluation variants rather than additional training stages. Robot drawings are schematic.}
+    \label{fig:sim_to_real_mechanism}
+\end{figure*}
+
 For precision-critical micro-manipulations such as micro-pipetting and droplet dispensing, we introduce a teleoperation-guided Imitation Learning (IL) pipeline. Expert demonstrations $\mathcal{D}_{\text{sim}} = \{(s_t, a_t)\}_{i=1}^N$ are collected within the simulation environment using a 6-DoF SpaceMouse interface. A visuomotor policy $\pi_\theta(a_t | s_t)$ is pre-trained via Behavioral Cloning (BC):
 \begin{equation}
     \mathcal{L}_{\text{BC}}(\theta) = \mathbb{E}_{(s_t, a_t) \sim \mathcal{D}_{\text{sim}}} \left[ \left\| \pi_\theta(s_t) - a_t \right\|_2^2 \right]
@@ -187,16 +205,18 @@ where $\lambda$ is a regularization hyperparameter that prevents catastrophic fo
 \subsection{Failure-Aware Hierarchical State Machine and Skill Library}
 \label{subsec:hierarchical_skill}
 
+Figure~\ref{fig:hsm_recovery_mechanism} shows guard-based skill sequencing and bounded recovery after failed verification.
+\begin{figure*}[!t]
+    \centering
+    \includegraphics[width=\textwidth]{images/mechanisms/hsm_recovery_reference_style_panda_photos.png}
+    \caption{Failure-aware hierarchical state machine and modular skill library. Completion guards permit progression; failed verification or grasp loss triggers bounded safe recovery. Retry or timeout exhaustion leads to safe stop. Panda images are original experimental photo crops reused to illustrate hardware, not stage-specific evidence of handover or recovery. Other icons are schematic; no learned high-level policy or measured recovery gain is implied.}
+    \label{fig:hsm_recovery_mechanism}
+\end{figure*}
+
 To coordinate a multi-stage bio-assay, we use a rule-based hierarchical state machine (HSM) above a modular \textit{Skill Library}. The HSM is not a learned high-level reinforcement-learning policy. It separates task sequencing from low-level control and makes transition and recovery conditions explicit.
 
 The library $\mathcal{L}_{\text{skills}} = \{\pi_{\text{grasp}}, \pi_{\text{transit}}, \pi_{\text{pour}}, \dots\}$ contains independently implemented manipulation policies and classical planning routines. Each skill declares preconditions, a completion guard, a timeout, and a failure code. Modularity permits one skill to be changed without retraining every other skill, but prevention of negative transfer is not claimed without a monolithic-policy comparison.
 
-\begin{figure}[htbp]
-    \centering
-    \includegraphics[width=0.5\linewidth]{images/skill_lab.png}
-    \caption{Autonomous characterization workflow governed by a Hierarchical State Machine (HSM) and a modular skill library. By invoking reusable low-level skill primitives, the system successfully executes comprehensive, multi-stage experimental cycles without human intervention.}
-    \label{fig:skill_library}
-\end{figure}
 
 The HSM has states such as \texttt{approach}, \texttt{grasp}, \texttt{verify}, \texttt{transit}, \texttt{handover}, and \texttt{recover}. At each transition, predefined guards evaluate observable signals such as \texttt{is\_bottle\_grasped}, \texttt{is\_at\_target}, docking confirmation, and sensor freshness. The transition function $s_{t+1}=\delta(s_t,g(o_t))$ is deterministic given the current HSM state and guard outcomes; no transition probabilities or learned confidence scores are assumed.
 

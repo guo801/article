@@ -1,22 +1,38 @@
 \section{系统架构与方法论}
 \label{sec:methodology}
 
-\begin{figure}[htbp]
+\begin{figure*}[!t]
     \centering
-    \includegraphics[width=\linewidth]{images/Framework.png}
-    \caption{多平台混合机器人端到端操作框架。系统采用宏微观解耦策略：宏观转移由约束感知的经典规划器控制以确保绝对防泼洒安全，而微观接触密集型任务由神经网络策略执行。}
+    \includegraphics[width=\textwidth]{images/Framework.png}
+    \caption{系统控制框架：结合物理仿真与RGB-D感知、约束轨迹规划、姿态感知强化学习、模仿学习与虚实迁移适配，并通过分层状态机调用可复用技能完成实验室任务。}
     \label{fig:overall_framework}
-\end{figure}
+\end{figure*}
 
 本章详细介绍了专为生化自动化化验（包括溶液配置、水滴角检测和梯度稀释）量身定制的多平台混合机器人框架。为了应对异构任务需求，跨工位宏观转移由约束感知经典规划执行，而灵巧的机械臂操作则由融合了大规模并行深度强化学习（DRL）与人在回路模仿学习（IL）的混合学习架构统筹。
 
 \subsection{用于策略训练的仿真环境}
 \label{subsec:simulation_training}
 
+图~\ref{fig:simulation_overview}概括了环境构建、技能并行训练及物理部署过程。
+\begin{figure*}[!t]
+    \centering
+    \includegraphics[width=0.94\textwidth]{images/environment_design2.png}
+    \caption{仿真开发与物理部署总览：实验室环境与资产构建、碰撞建模和数据采集；操作技能开发与并行仿真；以及实验室操作的虚实迁移部署。}
+    \label{fig:simulation_overview}
+\end{figure*}
+
 为了实现接触密集型任务的无风险训练与预验证，我们利用NVIDIA Isaac Sim构建了高保真仿真环境。在GPU加速张量物理引擎的驱动下，仿真环境能够准确建模刚体动力学、关节力矩和摩擦接触。夹爪和器材固定架均赋予了有符号距离场（SDF）碰撞网格，以实现无穿透的接触仿真。至关重要的是，独立的Python API架构实现了跨数千个并发虚拟环境的GPU并行化，彻底突破了物理机器人学习中样本效率低下的瓶颈。
 
 \subsection{仿真环境与实体环境的状态同步}
 \label{subsec:state_sync}
+
+图~\ref{fig:state_sync_mechanism}展示坐标与时间对齐、观测有效性检查，以及带来源标记的虚拟实验台状态更新。
+\begin{figure*}[!t]
+    \centering
+    \includegraphics[width=\textwidth]{images/mechanisms/state_synchronization_mechanism.png}
+    \caption{时间对齐的实体到仿真状态同步机制。异步关节、RGB-D与夹爪观测对齐到共同时间，并经有效性检查后更新场景。实线与虚线物体轮廓区分测量与传播估计位姿；同步用于可视化和比较，不代表已验证预测闭环控制。机械臂为示意绘制。}
+    \label{fig:state_sync_mechanism}
+\end{figure*}
 
 我们定义实体机器人与Isaac Sim仿真环境之间的状态接口。关节编码器提供机械臂关节位置$\mathbf q_t$和速度$\dot{\mathbf q}_t$，夹爪提供开合状态与抓取确认信号；RGB-D视觉观测提供可见物体的位置$\mathbf p_{i,t}$、姿态$\mathbf R_{i,t}$及检测置信度。仅在连续观测可靠时估计物体速度。每条状态记录保留采集时间戳和数据来源，以区分直接测量与估计状态。
 
@@ -25,12 +41,12 @@
 \subsection{面向宏观导航的约束感知运动规划}
 \label{subsec:macro_planning}
 
-\begin{figure}[htbp]
-    \centering
-    \includegraphics[width=0.9\linewidth]{images/environment_design.png}
-    \caption{基于Isaac Sim构建的高保真仿真环境。该仿真环境集成了UR3机械臂和Robotiq 2F-85平行夹爪，并采用有符号距离场（SDF）碰撞网格实现精确的接触建模。}
-    \label{fig:sim_env}
-\end{figure}
+% \begin{figure}[htbp]
+%     \centering
+%     \includegraphics[width=0.9\linewidth]{images/environment_design.png}
+%     \caption{基于Isaac Sim构建的高保真仿真环境。该仿真环境集成了UR3机械臂和Robotiq 2F-85平行夹爪，并采用有符号距离场（SDF）碰撞网格实现精确的接触建模。}
+%     \label{fig:sim_env}
+% \end{figure}
 
 对于工作站之间的宏观转移（例如运送配好的试剂瓶），我们采用约束感知的经典运动规划器。为了防止移动过程中的流体晃动，对末端执行器的横滚角（$\phi$）和俯仰角（$\theta$）施加了严格的任务空间姿态约束：
 \begin{equation}
@@ -113,12 +129,6 @@ MDP的目标是找到一个策略$\pi$，使得期望累积折扣奖励最大化
 \end{equation}
 其中$V_\phi$是参数为$\phi$的学习价值函数（评论家）。
 
-\begin{figure}[htbp]
-    \centering
-    \includegraphics[width=0.9\linewidth]{images/Large scale parallel training.png}
-    \caption{基于Isaac Sim构建的高保真仿真环境。该仿真环境集成了UR3机械臂和Robotiq 2F-85平行夹爪，并采用有符号距离场（SDF）碰撞网格实现精确的接触建模。}
-    \label{fig:sim_env_parallel}
-\end{figure}
 
 \subsubsection{奖励函数设计}
 \label{subsec:reward_design}
@@ -256,6 +266,14 @@ GAE参数$\lambda$ & 0.95 \\
 \subsection{模仿学习与少样本虚实迁移微调}
 \label{subsec:arm_il_adaptation}
 
+图~\ref{fig:sim_to_real_mechanism}概括基于行为克隆的迁移流程，包括随机化仿真示教、正则化适配及独立实体测试。
+\begin{figure*}[!t]
+    \centering
+    \includegraphics[width=\textwidth]{images/mechanisms/sim_to_real_mechanism.png}
+    \caption{精密操作的虚实迁移机制。行为克隆与域随机化提供仿真策略，少量实体示教用于带参数正则化的微调。桥梁示意适配与部署，对比模块表示评估方案而非额外训练步骤。机械臂为示意绘制。}
+    \label{fig:sim_to_real_mechanism}
+\end{figure*}
+
 对于微量移液和液滴滴加等精度要求极高的微观操作，我们引入了遥操作引导的模仿学习（IL）管线。利用6自由度SpaceMouse接口在仿真中采集专家示教数据$\mathcal{D}_{\text{sim}} = \{(s_t, a_t)\}_{i=1}^N$，并通过行为克隆（BC）预训练视觉运动策略$\pi_\theta(a_t | s_t)$：
 \begin{equation}
     \mathcal{L}_{\text{BC}}(\theta) = \mathbb{E}_{(s_t, a_t) \sim \mathcal{D}_{\text{sim}}} \left[ \left\| \pi_\theta(s_t) - a_t \right\|_2^2 \right]
@@ -283,17 +301,19 @@ GAE参数$\lambda$ & 0.95 \\
 \subsection{具备失败恢复机制的分层状态机与技能库}
 \label{subsec:hierarchical_skill}
 
+图~\ref{fig:hsm_recovery_mechanism}展示基于条件的技能编排，以及验证失败后的有限次数恢复。
+\begin{figure*}[!t]
+    \centering
+    \includegraphics[width=\textwidth]{images/mechanisms/hsm_recovery_reference_style_panda_photos.png}
+    \caption{具备失败恢复机制的分层状态机与模块化技能库。完成条件允许顺序推进，验证失败或抓取丢失触发有限安全恢复，达到重试或超时上限则安全停止。Panda画面直接裁剪自原始实验照片并复用于设备示意，不是交接或恢复阶段的独立实验证据；其余图标为示意，不表示经训练的高层策略或已测得的恢复收益。}
+    \label{fig:hsm_recovery_mechanism}
+\end{figure*}
+
 为协调抓取、转移和移液等多阶段任务，我们在模块化\textit{技能库}之上采用规则驱动的分层状态机（HSM）。上层任务编排不是经训练的强化学习策略；其作用是将任务顺序、状态转移和失败恢复条件显式定义。
 
 技能库$\mathcal{L}_{\text{skills}} = \{\pi_{\text{grasp}}, \pi_{\text{transit}}, \pi_{\text{pour}}, \dots\}$包含独立实现的操作策略及经典规划程序。每个技能规定前置条件、完成判据、超时限制和失败代码。模块化允许单独更新某一技能，但若无与单体策略的对照实验，不能宣称已消除负迁移。
 
 状态机包含\texttt{approach}、\texttt{grasp}、\texttt{verify}、\texttt{transit}、\texttt{handover}和\texttt{recover}等状态。预定义条件检查\texttt{is\_bottle\_grasped}、\texttt{is\_at\_target}、对接确认和传感器数据新鲜度。给定当前状态与条件结果，转移$s_{t+1}=\delta(s_t,g(o_t))$是确定性的；本文不假设状态转移概率或学习得到的置信度。
 
-\begin{figure}[htbp]
-    \centering
-    \includegraphics[width=0.5\linewidth]{images/skill_lab.png}
-    \caption{由分层状态机（HSM）和模块化技能库管理的自主表征工作流。通过调用可复用的低层技能基元，系统成功执行了全面的、多阶段的实验循环，无需人工干预。}
-    \label{fig:skill_library}
-\end{figure}
 
 若抓取验证失败，状态机停止转移，并在安全重新定位后返回\texttt{grasp}。重试次数与超时限制约束重复尝试；达到上限则进入安全停止状态，等待人工检查。这是所定义的恢复机制，不等于已经证实恢复率提升。应与无恢复机制的固定顺序状态机比较，报告阶段及完整工作流成功率、恢复次数、人工干预次数和完成时间。
